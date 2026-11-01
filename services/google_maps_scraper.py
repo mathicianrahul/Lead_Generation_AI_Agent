@@ -105,11 +105,27 @@ class GoogleMapsScraper:
 
             _progress("init", 5, f"Launching Chrome browser ({'headless' if headless else 'visible'} mode)...")
 
+            search_clean = query.strip()
+            if location.strip():
+                if location.strip().lower() not in search_clean.lower():
+                    search_term = f"{search_clean} in {location.strip()}"
+                else:
+                    search_term = search_clean
+            else:
+                search_term = search_clean
+
+            maps_url = f"https://www.google.com/maps/search/{quote_plus(search_term)}"
+            _progress("navigate", 10, f"Opening Google Maps: \"{search_term}\"...")
+
             async with async_playwright() as pw:
+                # Add chromium launch fallback arguments to prevent sandboxing or profile lock crashes
                 browser = await pw.chromium.launch(
                     headless=headless,
                     args=[
                         "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
                         "--start-maximized",
                     ]
                 )
@@ -124,13 +140,12 @@ class GoogleMapsScraper:
                 )
                 page = await context.new_page()
 
-                # ── Step 1: Navigate to Google Maps ──────────────────────
-                search_term = f"{query} in {location}"
-                maps_url = f"https://www.google.com/maps/search/{quote_plus(search_term)}"
-                _progress("navigate", 10, f"Opening Google Maps: \"{search_term}\"...")
-
-                await page.goto(maps_url, wait_until="domcontentloaded", timeout=30000)
-                await page.wait_for_timeout(3000)
+                # Navigate with domcontentloaded and safe timeout
+                try:
+                    await page.goto(maps_url, wait_until="domcontentloaded", timeout=45000)
+                except Exception as nav_e:
+                    logger.warning("Navigation timeout/warning: %s. Continuing with page...", nav_e)
+                await page.wait_for_timeout(3500)
 
                 # Handle cookie consent if it appears
                 await self._dismiss_consent(page)
@@ -138,25 +153,33 @@ class GoogleMapsScraper:
                 # ── Step 2: Wait for results to load ─────────────────────
                 _progress("loading", 15, "Waiting for search results to load...")
 
+                has_feed = False
                 try:
                     await page.wait_for_selector(
                         SELECTORS["results_feed"],
-                        timeout=15000,
+                        timeout=10000,
                         state="attached"
                     )
+                    has_feed = True
                 except Exception:
-                    # Might have landed on a single result detail page
+                    pass
+
+                if not has_feed:
+                    # Check if single business directly loaded
                     single_name = await self._safe_text(page, SELECTORS["biz_name"])
                     if single_name:
-                        _progress("extract", 50, f"Found single result: {single_name}")
+                        _progress("extract", 50, f"Found business directly: {single_name}")
                         lead = await self._extract_business_details(page, location)
                         if lead:
                             leads.append(lead)
                         await browser.close()
                         return leads, None
-                    else:
+
+                    # Or check if any place links exist even if feed container wasn't matched
+                    place_links_count = await page.locator("a[href*='/maps/place/']").count()
+                    if place_links_count == 0:
                         await browser.close()
-                        return [], "No search results found on Google Maps for this query."
+                        return [], f"No business results found on Google Maps for '{search_term}'."
 
                 # ── Step 3: Scroll to load more results ──────────────────
                 _progress("scrolling", 20, "Scrolling through results to find businesses...")
@@ -448,3 +471,4 @@ class GoogleMapsScraper:
 
 # Singleton
 google_maps_scraper = GoogleMapsScraper()
+

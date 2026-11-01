@@ -413,6 +413,7 @@ async def _run_gmaps_scrape_job(job_id: str, req: GoogleMapsSearchRequest):
         job["status"] = "error"
         job["error"] = str(exc)
         job["logs"].append(f"Scraper error: {exc}")
+        logger.error("Scraper job %s failed: %s", job_id, exc, exc_info=True)
 
 
 @app.get("/api/scrape/{job_id}/stream")
