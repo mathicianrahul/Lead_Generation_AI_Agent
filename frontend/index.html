@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeadPilot AI — Website Sales & Lead Generation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app/css/main.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">🚀</div>
+        <div class="logo-text">
+          <span class="logo-name">LeadPilot</span>
+          <span class="logo-badge">AI</span>
+        </div>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#9776;</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-page="dashboard" href="#dashboard">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" data-page="find-leads" href="#find-leads">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">Find Leads</span>
+      </a>
+      <a class="nav-item" data-page="leads" href="#leads">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Lead Database</span>
+        <span class="nav-badge" id="leadsCount">0</span>
+      </a>
+      <a class="nav-item" data-page="verification" href="#verification">
+        <span class="nav-icon">✅</span>
+        <span class="nav-label">Verification Hub</span>
+      </a>
+      <a class="nav-item" data-page="outreach" href="#outreach">
+        <span class="nav-icon">📧</span>
+        <span class="nav-label">Email Outreach</span>
+        <span class="nav-badge pending" id="draftsCount">0</span>
+      </a>
+      <a class="nav-item" data-page="crm" href="#crm">
+        <span class="nav-icon">💼</span>
+        <span class="nav-label">CRM Pipeline</span>
+      </a>
+      <a class="nav-item" data-page="reports" href="#reports">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" data-page="settings" href="#settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="demo-badge" id="demoBadge">
+        <span class="demo-dot"></span>
+        <span>DEMO MODE</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main-wrapper" id="mainWrapper">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-status" id="apiStatus">
+          <span class="status-dot online"></span>
+          <span class="status-text">System Online</span>
+        </div>
+        <button class="btn btn-primary" data-page="find-leads" onclick="router.navigate('find-leads')">
+          + New Search
+        </button>
+      </div>
+    </header>
+
+    <!-- Page container -->
+    <main class="page-container" id="pageContainer">
+      <!-- Pages injected here by JS router -->
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Lead detail modal -->
+  <div class="modal-overlay" id="modalOverlay" style="display:none;">
+    <div class="modal-box" id="modalBox">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/app/js/app.js"></script>
+</body>
+</html>
+

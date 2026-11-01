@@ -1,0 +1,33 @@
+# Environment and secrets
+.env
+*.env
+token.json
+credentials.json
+client_secrets.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Exports and temporary data
+exports/*.xlsx
+exports/*.csv
+!exports/.gitkeep
+scratch/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
