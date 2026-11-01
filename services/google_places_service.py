@@ -5,9 +5,10 @@ from typing import Dict, Any, List, Optional, Tuple
 from config.settings import settings
 from config.logging_config import logger
 from utils.phone_utils import normalize_phone_number
+from services.discovery_provider import DiscoveryProvider, normalize_discovery_record
 
 
-class GooglePlacesService:
+class GooglePlacesService(DiscoveryProvider):
     """
     Official Google Places API integration service.
     Handles Text Search, Place Details, pagination, quota tracking,
@@ -16,9 +17,42 @@ class GooglePlacesService:
     BASE_TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
     BASE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
     NEW_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+    ATTRIBUTION = "Data © Google LLC"
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.google_maps_api_key
+
+    @property
+    def provider_name(self) -> str:
+        return "Google Places API"
+
+    @property
+    def attribution(self) -> str:
+        return self.ATTRIBUTION
+
+    @staticmethod
+    def categorize_error(err: Optional[str]) -> str:
+        """Classifies error messages into billing, quota, auth, network, or generic API errors."""
+        if not err:
+            return "NONE"
+        low = err.lower()
+        if any(w in low for w in ("billing", "prepayment", "credit card", "payment", "account not active")):
+            return "BILLING_ERROR"
+        if any(w in low for w in ("over_query_limit", "quota", "rate limit", "too many requests", "429")):
+            return "QUOTA_ERROR"
+        if any(w in low for w in ("request_denied", "permission_denied", "api_key_invalid", "unauthorized", "401", "403", "forbidden")):
+            return "AUTH_ERROR"
+        if any(w in low for w in ("timeout", "connection", "network", "offline", "econnrefused")):
+            return "NETWORK_ERROR"
+        return "API_ERROR"
+
+    @staticmethod
+    def is_billing_or_quota_error(err: Optional[str]) -> bool:
+        """Determines if a Google Places error is caused by missing billing, quota exceeded, or permission denied."""
+        if not err:
+            return False
+        cat = GooglePlacesService.categorize_error(err)
+        return cat in ("BILLING_ERROR", "QUOTA_ERROR", "AUTH_ERROR")
 
     def is_configured(self) -> bool:
         key = self.api_key or settings.google_maps_api_key

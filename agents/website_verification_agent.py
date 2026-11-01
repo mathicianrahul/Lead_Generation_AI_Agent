@@ -23,12 +23,26 @@ class WebsiteVerificationAgent:
             b_name = rec.get("business_name", "")
             city = rec.get("city", "")
             category = rec.get("category", "")
+            source = rec.get("source", "")
 
             # If no website listed and deep search is enabled, attempt Stage C check
             if not raw_url and enable_deep_search:
                 found_url = self.search_service.search_business_website(b_name, city, category)
                 if found_url:
                     raw_url = found_url
+
+            # For OpenStreetMap records where website is missing:
+            # Do not assume that a missing website tag means the business definitely has no website.
+            if not raw_url and "openstreetmap" in str(source).lower():
+                rec_copy = dict(rec)
+                rec_copy["website_status"] = "UNVERIFIED"
+                rec_copy["verification_confidence"] = 0.50
+                rec_copy["verification_evidence"] = (
+                    "No website tag present in OpenStreetMap record. "
+                    "Crowdsourced map data may omit website tags; business website presence is unverified."
+                )
+                verified_records.append(rec_copy)
+                continue
 
             # Execute verification
             result = self.check_service.verify_website(raw_url, b_name)

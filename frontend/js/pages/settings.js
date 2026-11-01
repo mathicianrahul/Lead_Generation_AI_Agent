@@ -23,10 +23,20 @@ export async function renderSettings(container) {
       <div class="integration-card">
         <div class="integration-icon">🗺️</div>
         <div class="integration-info">
-          <div class="integration-name">Google Places API</div>
-          <div class="integration-desc">Business discovery and location data</div>
+          <div class="integration-name">Google Places API (New)</div>
+          <div class="integration-desc">Primary business discovery provider</div>
           <div style="margin-top:8px">${statusBadge(cfg.google_places_api, 'configured')}</div>
-          ${cfg.demo_mode ? `<div style="margin-top:6px"><span class="badge badge-yellow">DEMO MODE — Realistic Mock data active</span></div>` : ''}
+          ${cfg.demo_mode ? `<div style="margin-top:6px"><span class="badge badge-yellow">DEMO MODE — Mock data fallback</span></div>` : ''}
+        </div>
+      </div>
+
+      <div class="integration-card">
+        <div class="integration-icon">🌍</div>
+        <div class="integration-info">
+          <div class="integration-name">OpenStreetMap Overpass API</div>
+          <div class="integration-desc">Free open-source business discovery & fallback</div>
+          <div style="margin-top:8px"><span class="badge badge-green">✅ Ready (Public Service)</span></div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px">Data © OpenStreetMap contributors (ODbL)</div>
         </div>
       </div>
 

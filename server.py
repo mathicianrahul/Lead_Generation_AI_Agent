@@ -24,10 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
 from config.settings import settings
-from database.connection import init_db, get_db_session
+from config.logging_config import logger
+from database.connection import init_db, get_db_session, SessionLocal
 from database.models import Lead, LeadEmail, EmailDraft, SearchJob, VerificationResult
 from database.repository import LeadRepository
 from services.export_service import ExportService
+from services.google_maps_scraper import google_maps_scraper
 from graph.workflow import run_lead_workflow
 
 # ---------------------------------------------------------------------------
@@ -68,6 +70,7 @@ class SearchRequest(BaseModel):
     location: str
     radius_km: int = 10
     max_results: int = 20
+    provider: str = "auto"
 
 class LeadUpdateRequest(BaseModel):
     crm_status: Optional[str] = None
@@ -81,6 +84,12 @@ class DraftUpdateRequest(BaseModel):
 class SuppressRequest(BaseModel):
     email: str
     reason: str = "manual"
+
+class GoogleMapsSearchRequest(BaseModel):
+    query: str
+    location: str
+    max_results: int = 20
+    headless: bool = False
 
 # ---------------------------------------------------------------------------
 # Root — serve index.html
@@ -115,19 +124,20 @@ async def health():
 async def get_settings():
     return {
         "demo_mode": settings.demo_mode,
+        "discovery_provider": settings.discovery_provider,
+        "overpass_api_url": settings.overpass_api_url,
         "google_places_api": "configured" if settings.google_maps_api_key else "missing",
         "openai_api": "configured" if settings.openai_api_key else "missing",
-        "huggingface_api": "configured" if settings.huggingface_api_key else "missing",
-        "gmail_configured": False,  # OAuth not set up yet
+        "huggingface_api": "configured" if settings.huggingface_api_token else "missing",
+        "gmail_configured": settings.has_gmail_config(),
         "scoring_weights": {
-            "has_website": settings.score_has_website,
-            "website_verified": settings.score_website_verified,
-            "has_phone": settings.score_has_phone,
-            "has_email": settings.score_has_email,
-            "rating_boost": settings.score_rating_boost,
-            "review_boost": settings.score_review_boost,
+            "website_opportunity": settings.scoring_weights.website_opportunity,
+            "phone_available": settings.scoring_weights.phone_available,
+            "email_available": settings.scoring_weights.email_available,
+            "active_operations": settings.scoring_weights.active_operations,
+            "category_website_value": settings.scoring_weights.category_website_value,
         },
-        "daily_email_cap": settings.daily_email_cap,
+        "daily_email_cap": settings.max_daily_emails,
         "max_search_results": settings.max_search_results,
     }
 
@@ -255,6 +265,7 @@ async def _run_search_job(job_id: str, req: SearchRequest):
             "max_results": req.max_results,
             "min_score": 50.0,
             "budget_limit": 50,
+            "provider": req.provider or "auto",
         }
 
         loop = asyncio.get_event_loop()
@@ -310,6 +321,129 @@ async def job_status(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+# ---------------------------------------------------------------------------
+# Google Maps Browser Scraper — SSE streaming
+# ---------------------------------------------------------------------------
+@app.post("/api/scrape/google-maps")
+async def start_gmaps_scrape(req: GoogleMapsSearchRequest, background_tasks: BackgroundTasks):
+    """Launch a Google Maps browser scraping job (opens Chrome to find leads)."""
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {
+        "status": "queued",
+        "progress": 0,
+        "logs": [],
+        "result": None,
+        "error": None,
+    }
+    background_tasks.add_task(_run_gmaps_scrape_job, job_id, req)
+    return {"job_id": job_id}
+
+
+async def _run_gmaps_scrape_job(job_id: str, req: GoogleMapsSearchRequest):
+    """Run the Google Maps Playwright scraper in a background task."""
+    job = _jobs[job_id]
+    job["status"] = "running"
+    job["logs"].append("Starting Google Maps browser automation...")
+
+    def progress_cb(step_name: str, pct: int, msg: str):
+        job["progress"] = pct
+        job["logs"].append(msg)
+
+    try:
+        leads, error = await google_maps_scraper.scrape_leads(
+            query=req.query,
+            location=req.location,
+            max_results=req.max_results,
+            headless=req.headless,
+            progress_callback=progress_cb,
+        )
+
+        if error and not leads:
+            job["status"] = "error"
+            job["error"] = error
+            job["logs"].append(f"Scraping failed: {error}")
+            return
+
+        # Persist scraped leads to database
+        if leads:
+            job["logs"].append(f"Saving {len(leads)} leads to database...")
+            db = SessionLocal()
+            try:
+                repo = LeadRepository(db)
+                saved_count = 0
+                for lead_data in leads:
+                    try:
+                        lead_obj, is_new, action = repo.create_or_merge_lead(lead_data)
+                        # Record verification
+                        repo.record_verification(
+                            lead_id=lead_obj.id,
+                            method="GOOGLE_MAPS_BROWSER_SCRAPE",
+                            status=lead_obj.website_status,
+                            evidence="Extracted via Google Maps browser automation",
+                            source="Google Maps (Browser)",
+                            confidence=lead_obj.verification_confidence or 0.5,
+                            candidate_url=lead_obj.website_url,
+                        )
+                        saved_count += 1
+                    except Exception as e:
+                        logger.warning("Failed to save lead '%s': %s",
+                                       lead_data.get("business_name", "?"), str(e))
+            finally:
+                db.close()
+            job["logs"].append(f"Saved {saved_count} leads to database!")
+        else:
+            saved_count = 0
+
+        job["progress"] = 100
+        job["status"] = "done"
+        job["logs"].append(
+            f"Google Maps scraping complete! {len(leads)} businesses found, {saved_count} saved."
+        )
+        job["result"] = {
+            "leads_found": len(leads),
+            "leads_saved": saved_count,
+            "source": "Google Maps (Browser)",
+        }
+
+        if error:
+            job["logs"].append(f"Note: {error}")
+
+    except Exception as exc:
+        job["status"] = "error"
+        job["error"] = str(exc)
+        job["logs"].append(f"Scraper error: {exc}")
+
+
+@app.get("/api/scrape/{job_id}/stream")
+async def stream_scrape_job(job_id: str):
+    """SSE endpoint — stream scrape job progress to the browser."""
+    if job_id not in _jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        sent_log_idx = 0
+        while True:
+            job = _jobs.get(job_id, {})
+            new_logs = job.get("logs", [])[sent_log_idx:]
+            for log in new_logs:
+                yield f"data: {json.dumps({'type': 'log', 'message': log, 'progress': job.get('progress', 0)})}\n\n"
+            sent_log_idx += len(new_logs)
+
+            if job.get("status") in ("done", "error"):
+                payload = {
+                    "type": "done",
+                    "status": job["status"],
+                    "result": job.get("result"),
+                    "error": job.get("error"),
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
+                break
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 # ---------------------------------------------------------------------------
 # Email Drafts

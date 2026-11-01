@@ -47,6 +47,7 @@ class Lead(Base):
 
     # Data origin flag: False = Real API data, True = Simulated/Demo data
     is_demo = Column(Boolean, default=False, index=True)
+    source = Column(String(100), default="Google Places API", nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

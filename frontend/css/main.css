@@ -644,7 +644,7 @@ textarea.form-control {
 
 .search-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 1.8fr 1.2fr 1.2fr 0.8fr 0.8fr auto;
   gap: 12px;
   align-items: end;
 }
@@ -1128,4 +1128,36 @@ textarea.form-control {
   .kanban-board { grid-template-columns: repeat(3, 200px); }
   .page-container { padding: 16px; }
 }
+
+/* ── Google Maps Browser Banner ──────────────────────────── */
+.gmaps-banner {
+  background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(59,130,246,0.08));
+  border: 1px solid rgba(34,211,238,0.25);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  animation: gmaps-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes gmaps-glow {
+  0%   { border-color: rgba(34,211,238,0.15); }
+  100% { border-color: rgba(34,211,238,0.4); }
+}
+
+.badge-live {
+  display: inline-block;
+  background: var(--green-500);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
 

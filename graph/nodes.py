@@ -48,13 +48,20 @@ def discover_businesses_node(state: LeadPilotState) -> LeadPilotState:
 
     plan = state["execution_plan"]
     queries = plan.get("queries", [])
-    max_res = plan.get("normalized_params", {}).get("max_results", 20)
-    country = plan.get("normalized_params", {}).get("country", "India")
+    norm_params = plan.get("normalized_params", {})
+    max_res = norm_params.get("max_results", 20)
+    country = norm_params.get("country", "India")
+    city = norm_params.get("city", "")
+    area = norm_params.get("area", "")
+    provider = norm_params.get("provider", "auto")
 
     records, calls, errors = business_discovery_agent.run(
         queries=queries,
         max_results=max_res,
-        country=country
+        country=country,
+        provider=provider,
+        city=city,
+        area=area
     )
 
     state["discovered_records"] = records

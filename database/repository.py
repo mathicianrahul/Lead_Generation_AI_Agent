@@ -112,6 +112,7 @@ class LeadRepository:
             scoring_explanation=lead_data.get("scoring_explanation"),
             contact_status=lead_data.get("contact_status", "Not contacted"),
             is_demo=lead_data.get("is_demo", False),
+            source=lead_data.get("source", "Google Places API"),
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
             last_verified_at=datetime.datetime.utcnow() if lead_data.get("website_status") else None
@@ -575,6 +576,8 @@ class LeadRepository:
                 "estimated_deal_value": l.estimated_deal_value,
                 "notes":        l.notes if hasattr(l, "notes") else None,
                 "is_demo":      l.is_demo,
+                "source":       getattr(l, "source", None) or ("OpenStreetMap" if l.place_id and str(l.place_id).startswith("osm:") else ("Simulated Places Data (Demo Mode)" if l.is_demo else "Google Places API")),
+                "attribution":  "Data © OpenStreetMap contributors (ODbL)" if (getattr(l, "source", None) == "OpenStreetMap" or (l.place_id and str(l.place_id).startswith("osm:"))) else "Data © Google LLC",
                 "created_at":   str(l.created_at)[:19] if l.created_at else None,
                 "last_verified_at": str(l.last_verified_at)[:19] if l.last_verified_at else None,
             }
@@ -616,6 +619,8 @@ class LeadRepository:
             "estimated_deal_value": l.estimated_deal_value,
             "notes":        l.notes if hasattr(l, "notes") else None,
             "is_demo":      l.is_demo,
+            "source":       getattr(l, "source", None) or ("OpenStreetMap" if l.place_id and str(l.place_id).startswith("osm:") else ("Simulated Places Data (Demo Mode)" if l.is_demo else "Google Places API")),
+            "attribution":  "Data © OpenStreetMap contributors (ODbL)" if (getattr(l, "source", None) == "OpenStreetMap" or (l.place_id and str(l.place_id).startswith("osm:"))) else "Data © Google LLC",
             "created_at":   str(l.created_at)[:19] if l.created_at else None,
             "last_verified_at": str(l.last_verified_at)[:19] if l.last_verified_at else None,
         }

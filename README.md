@@ -7,7 +7,7 @@
 
 ## 🌟 Key Features
 
-1. **Official Google Places API Integration**: Real-time business discovery across India and global regions with automatic pagination and query normalization.
+1. **Multi-Provider Business Discovery**: Supports **Google Places API** and **OpenStreetMap Overpass API** with automatic fallback. Configurable via the `DISCOVERY_PROVIDER` environment variable (`auto`, `google`, `osm`).
 2. **Transparent Website Verification Pipeline**:
    - Safe HTTP verification with full SSRF protection (rejects localhost, loopbacks, and private IP ranges `10.0.0.0/8`, `192.168.0.0/16`, `172.16.0.0/12`).
    - Identifies social-media-only profiles (`SOCIAL_MEDIA_ONLY`) vs. third-party marketplace listings (`DIRECTORY_ONLY`) vs. independent websites (`WEBSITE_FOUND`) vs. businesses without any website (`NO_WEBSITE_FOUND`).
@@ -40,7 +40,7 @@
        [Search Planning Agent]
                     |
                     v
-      [Business Discovery Agent] (Google Places API)
+      [Business Discovery Agent] (Google Places / OpenStreetMap)
                     |
                     v
     [Data Quality & Deduplication] (Place ID -> Phone -> Name/Address)
@@ -96,7 +96,10 @@ Lead Generation Agent/
 │   └── repository.py                 # Data Access Layer & Analytics Queries
 │
 ├── services/
-│   ├── google_places_service.py      # Places API Search & Place Details
+│   ├── discovery_provider.py         # Abstract Discovery Provider Interface
+│   ├── discovery_manager.py          # Provider Orchestrator & Auto-Fallback
+│   ├── google_places_service.py      # Google Places API Search & Details
+│   ├── osm_service.py                # OpenStreetMap Overpass API Discovery
 │   ├── website_check_service.py      # Safe HTTP Probing & SSRF Protection
 │   ├── web_search_service.py         # Secondary Web Lookup Service
 │   ├── scoring_service.py            # 0-100 Heuristic Qualification Scoring

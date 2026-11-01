@@ -30,8 +30,15 @@ class Settings(BaseModel):
     # Database
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'leadpilot.db'}")
 
+    # Discovery Providers (Google Places, OpenStreetMap Overpass, or Auto Fallback)
+    discovery_provider: str = os.getenv("DISCOVERY_PROVIDER", "auto").lower()
     # Google Maps Places API
     google_maps_api_key: Optional[str] = os.getenv("GOOGLE_MAPS_API_KEY")
+
+    # OpenStreetMap Overpass API
+    overpass_api_url: str = os.getenv("OVERPASS_API_URL", "https://overpass-api.de/api/interpreter")
+    overpass_timeout_seconds: int = int(os.getenv("OVERPASS_TIMEOUT_SECONDS", "25"))
+    overpass_rate_limit_delay: float = float(os.getenv("OVERPASS_RATE_LIMIT_DELAY", "1.0"))
 
     # LLM Provider
     llm_provider: str = os.getenv("LLM_PROVIDER", "huggingface")

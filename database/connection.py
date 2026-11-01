@@ -17,10 +17,22 @@ SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bi
 
 
 def init_db():
-    """Initializes all database tables."""
+    """Initializes all database tables and ensures schema migrations."""
     try:
         from database import models  # Ensure all models are registered
         Base.metadata.create_all(bind=engine)
+
+        # Non-destructive auto-migration for newly added columns
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        if "leads" in inspector.get_table_names():
+            existing_cols = [c["name"] for c in inspector.get_columns("leads")]
+            if "source" not in existing_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE leads ADD COLUMN source VARCHAR(100) DEFAULT 'Google Places API'"))
+                    conn.commit()
+                logger.info("Auto-migrated 'leads' table: added 'source' column.")
+
         logger.info("Database initialized successfully at %s", settings.database_url)
     except Exception as e:
         logger.error("Failed to initialize database: %s", str(e))

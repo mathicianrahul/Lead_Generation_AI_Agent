@@ -19,6 +19,7 @@ class SearchPlanInput(BaseModel):
     enable_verification: bool = True
     enable_ai_personalization: bool = True
     budget_limit: int = 50
+    provider: str = "auto"
 
 
 class SearchPlanOutput(BaseModel):

@@ -218,7 +218,9 @@ class ExportService:
             ("Businesses with Existing Websites", len([l for l in leads if l.get("website_status") in ("WEBSITE_FOUND", "WEBSITE_FOUND_ACCESSIBLE")])),
             ("Unverified / Needs Verification", len(needs_verif)),
             ("API Calls Used", s_data.get("actual_api_usage", 0)),
-            ("Data Mode", "DEMO MODE (Simulated)" if any(l.get("is_demo") for l in leads) else "LIVE GOOGLE PLACES API")
+            ("Data Mode", "DEMO MODE (Simulated)" if any(l.get("is_demo") for l in leads) else "LIVE API"),
+            ("Data Source(s)", ", ".join(sorted(set(str(l.get("source") or "Google Places API") for l in leads))) if leads else "N/A"),
+            ("Attribution", "Data © OpenStreetMap contributors (ODbL)" if any("OpenStreetMap" in str(l.get("source", "")) for l in leads) else "Data © Google LLC")
         ]
 
         for s_idx, (k, v) in enumerate(summary_metrics, start=3):
